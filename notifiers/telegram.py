@@ -10,8 +10,8 @@ logger = logging.getLogger("JSA.Telegram")
 
 class TelegramNotifier:
     """
-    High-Aesthetic Telegram Dispatcher for Charugundla Paavansai:
-    1. Elegant visual spacing, bold highlights, and emoji badges.
+    State-of-the-art Telegram Dispatcher for Charugundla Paavansai:
+    1. Elegant visual spacing, bold highlights, blockquote card styling, and emoji badges.
     2. Zero clutter: Strictly AWS & DevOps (No Azure/GCP bleed).
     3. 1-Tap Copy Cold Outreach message (code syntax) to DM recruiters.
     4. Direct PDF Resume document delivery to your Telegram chat.
@@ -73,7 +73,7 @@ class TelegramNotifier:
             f"🚀 <b>AWS & DEVOPS RADAR — NEW OPENINGS</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>Candidate:</b> Charugundla Paavansai\n"
-            f"⏱ <b>Posted:</b> Last 24 Hours • Score: 60%+\n"
+            f"⏱ <b>Filter:</b> Last 24 Hours • Score: 60%+\n"
             f"📅 <b>Scanned:</b> {now_str}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         )
@@ -91,17 +91,15 @@ class TelegramNotifier:
             safe_dm = html.escape(pitch['linkedin_dm'])
 
             card = (
-                f"📌 <b>{idx}. {safe_title}</b>\n\n"
-                f"🏢 <b>{safe_company}</b>  ({intel['rating']})\n"
-                f"📍 <b>Location:</b> {safe_location}\n"
-                f"💰 <b>Est. Salary:</b> <b>{intel['salary']}</b>\n"
-                f"🎯 <b>Match Score:</b> <b>{job.match_score:.0f}%</b>\n"
-                f"📡 <b>Source:</b> {source_badge}\n\n"
-                f"🔗 <b>Application Link:</b>\n"
-                f"👉 <a href='{job.apply_url}'><b>Click Here to Apply Directly</b></a>\n\n"
-                f"🔍 <b>Hiring Manager Connect:</b>\n"
-                f"👉 <a href='{pitch['linkedin_search_url']}'><b>Find Recruiters at {safe_company}</b></a>\n\n"
-                f"💬 <b>1-Tap Copy Recruiter Pitch:</b>\n"
+                f"📌 <b>{idx}. {safe_title}</b>\n"
+                f"<blockquote>"
+                f"🏢 <b>{safe_company}</b>  •  ⭐ <b>{intel['rating']}</b> ({intel['tier']})\n"
+                f"📍 <b>{safe_location}</b>  •  💰 <b>{intel['salary']}</b>\n"
+                f"🎯 <b>Match Score: {job.match_score:.0f}%</b>  •  📡 <i>{source_badge}</i>"
+                f"</blockquote>\n\n"
+                f"🔗 <b><a href='{job.apply_url}'>APPLY DIRECTLY (Official Board) ↗</a></b>\n"
+                f"👔 <b><a href='{pitch['linkedin_search_url']}'>FIND HIRING MANAGERS ON LINKEDIN ↗</a></b>\n\n"
+                f"💬 <b>1-Tap Cold Outreach Pitch (Tap below to copy):</b>\n"
                 f"<code>{safe_dm}</code>\n\n"
                 f"──────────────────────────\n"
             )
