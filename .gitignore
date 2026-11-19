@@ -1,0 +1,19 @@
+# Environment variables & secrets
+.env
+
+# Virtual Environment & Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Databases & local state
+*.db-journal
+*.log
+
+# Generated Resumes (Local temporary files)
+generated_resumes/*.html
+!generated_resumes/.gitkeep

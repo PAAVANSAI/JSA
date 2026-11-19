@@ -1,0 +1,119 @@
+{
+  "personal": {
+    "full_name": "Charugundla Paavansai",
+    "email": "charugundlapaavansai@gmail.com",
+    "phone": "+91 9347741014",
+    "location": "Hyderabad, Telangana, India",
+    "linkedin": "https://linkedin.com/in/charugundla-paavan-sai",
+    "github": "https://github.com/charugundla-paavan-sai"
+  },
+  "target_roles": [
+    "AWS Engineer",
+    "DevOps Engineer",
+    "Cloud Engineer",
+    "AWS Fresher",
+    "DevOps Fresher",
+    "Junior DevOps Engineer",
+    "AWS Cloud Support Engineer",
+    "Cloud Infrastructure Engineer",
+    "Site Reliability Engineer (Entry Level)",
+    "Build and Release Engineer"
+  ],
+  "target_locations": [
+    "Hyderabad",
+    "Bengaluru",
+    "Remote",
+    "Pune",
+    "Chennai"
+  ],
+  "experience_level": {
+    "years_experience": 1.0,
+    "max_acceptable_years_on_jd": 3.0,
+    "is_fresher_open": true
+  },
+  "summary": "Entry-level AWS and DevOps Engineer with 1 year of hands-on experience in AWS infrastructure, CI/CD, Docker and monitoring as an AWS Administrator Intern and DevOps Trainer. Built serverless, chatbot and automation projects using Lambda, API Gateway and Amazon Lex. Skilled in IAM least-privilege security, containerization, and automation.",
+  "skills": {
+    "aws_core": [
+      "EC2", "S3", "IAM", "VPC", "CloudWatch", "RDS", "ECR"
+    ],
+    "aws_serverless_ai": [
+      "Lambda", "API Gateway", "SES", "CodePipeline", "CodeBuild", "CodeDeploy", "Amazon Lex", "AWS Bedrock"
+    ],
+    "devops_tools": [
+      "Docker", "Jenkins", "Terraform", "Kubernetes", "Git", "Nginx", "Linux (Ubuntu)"
+    ],
+    "practices": [
+      "CI/CD Pipelines", "Infrastructure as Code (IaC)", "Containerization", "Deployment Automation", "Monitoring & Alerting", "IAM Least Privilege"
+    ],
+    "programming": [
+      "Python", "Java", "SQL", "Bash/Linux Scripting"
+    ]
+  },
+  "experience": [
+    {
+      "role": "AWS and DevOps Trainer",
+      "company": "Teks Academy",
+      "duration": "Apr 2026 – Present",
+      "tools": ["AWS", "Docker", "Jenkins", "Linux", "Git"],
+      "highlights": [
+        "Delivered hands-on training on AWS core services, CI/CD pipelines, and DevOps best practices.",
+        "Designed practical lab exercises on Docker, Jenkins, and Linux automation to reinforce real-world DevOps workflows.",
+        "Mentored learners in interview preparation, troubleshooting, and capstone project reviews."
+      ]
+    },
+    {
+      "role": "AWS Administrator Intern",
+      "company": "VVT Solutions",
+      "duration": "Dec 2025 – Mar 2026",
+      "tools": ["AWS", "Docker", "Terraform", "CodeDeploy", "CloudWatch"],
+      "highlights": [
+        "Provisioned and configured EC2 instances, including VPC setup, security groups, and key pair management.",
+        "Assisted in building CI/CD pipelines with AWS CodePipeline and CodeBuild using buildspec.yml and appspec.yml.",
+        "Containerized applications with Docker, managing image versioning and lifecycle across dev and staging.",
+        "Supported automated deployments via AWS CodeDeploy and built Amazon CloudWatch dashboards and alarms."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "title": "AI-Powered Dockerfile Generator using Local LLMs (2026)",
+      "technologies": ["Python", "Ollama", "CodeLlama", "Docker", "REST API"],
+      "description": "Built a Python automation tool using a local LLM via Ollama to generate production-ready Dockerfiles. Parsed dependency files (package.json, requirements.txt) contextually and validated Dockerfiles across multiple runtimes."
+    },
+    {
+      "title": "Serverless Contact Form with Email Notifications (2026)",
+      "technologies": ["AWS S3", "Lambda", "API Gateway", "SES"],
+      "description": "Built a serverless contact form using S3 static hosting, API Gateway, Python Lambda, and SES to dispatch automated emails upon form submission with IAM bucket policies."
+    },
+    {
+      "title": "PizzaBot – Conversational Chatbot (2026)",
+      "technologies": ["Amazon Lex V2"],
+      "description": "Engineered a conversational pizza-ordering bot using Amazon Lex V2 with custom intents (OrderPizza, Greeting, Help) and slots (PizzaSize, PizzaType), deploying aliases for full order lifecycle confirmation."
+    },
+    {
+      "title": "CI/CD Pipeline Automation (2025)",
+      "technologies": ["AWS", "Docker", "Jenkins", "CloudWatch", "IAM"],
+      "description": "Containerized applications with Docker and established automated Jenkins CI/CD builds with CloudWatch alerting and IAM least-privilege role policies."
+    }
+  ],
+  "education": [
+    {
+      "degree": "B.Tech in Computer Science and Engineering",
+      "institution": "PSCMRCET College, Vijayawada",
+      "graduation_year": "2025",
+      "cgpa": "8.0 / 10"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "AWS Cloud Practitioner Essentials",
+      "issuer": "Coursera",
+      "year": "2024"
+    },
+    {
+      "name": "Data Structures and Algorithms Training",
+      "issuer": "College Technical Program",
+      "year": "2023"
+    }
+  ]
+}

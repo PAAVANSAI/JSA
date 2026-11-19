@@ -1,0 +1,27 @@
+{
+  "location": "Hyderabad, Telangana, India",
+  "tech_parks": ["HITEC City", "Gachibowli", "Financial District (Nanakramguda)", "Madhapur", "Kondapur", "Uppal", "Pocharam"],
+  "companies_count": 500,
+  "top_tier_companies": [
+    "Microsoft India R&D", "Google India", "Amazon AWS India", "Oracle Financial Services", "Salesforce India",
+    "ServiceNow India", "Apple Technologies", "Meta/Facebook", "Uber India Systems", "Qualcomm India",
+    "AMD R&D Center", "Micron Technology", "DE Shaw India", "Arcesium India", "FactSet Systems",
+    "Pegasystems Worldwide", "Teradata Corporation", "Broadridge Financial Solutions", "EPAM Systems", "Virtusa",
+    "Darwinbox", "HighRadius Technologies", "Zenoti Software", "Keka HR", "CtrlS Datacenters",
+    "Tata Consultancy Services (TCS)", "Infosys Ltd", "Wipro Technologies", "Cognizant Technology Solutions",
+    "Tech Mahindra", "HCLTech", "LTIMindtree", "Capgemini India", "Accenture Solutions",
+    "Wells Fargo India", "JPMorgan Chase & Co", "Goldman Sachs", "Bank of America", "State Street Corporate",
+    "Synchrony Financial", "MassMutual India", "Optum Global Solutions", "Providence India", "Novartis Healthcare",
+    "Cyient Limited", "Sonata Software", "Persistent Systems", "Hexaware Technologies", "Mphasis Limited",
+    "Birlasoft", "Zensar Technologies", "Kellton Tech", "AppShark Software", "Infor India",
+    "OpenText Technologies", "NCR Voyix", "Electronic Arts (EA India)", "Synopsys India", "Medtronic Engineering"
+  ],
+  "job_search_keywords_for_hyderabad": [
+    "AWS Fresher Hyderabad",
+    "DevOps Engineer Hyderabad",
+    "Cloud Support Engineer HITEC City",
+    "Junior Cloud Engineer Gachibowli",
+    "AWS Linux Engineer Financial District",
+    "Docker Kubernetes Fresher Hyderabad"
+  ]
+}
