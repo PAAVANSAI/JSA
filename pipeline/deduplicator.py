@@ -21,7 +21,7 @@ class Deduplicator:
         self._init_db()
 
     def _init_db(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS seen_jobs (
@@ -40,7 +40,7 @@ class Deduplicator:
             conn.commit()
 
     def is_already_processed(self, fingerprint: str) -> bool:
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT 1 FROM seen_jobs WHERE fingerprint = ?", (fingerprint,))
             return cursor.fetchone() is not None
@@ -49,16 +49,25 @@ class Deduplicator:
         """
         Deduplicates incoming jobs in the current run and merges duplicates.
         Ensures the 'best link wins' (lowest source_layer number wins).
-        Strictly drops anything older than 24 hours.
+        Strictly drops anything older than 24 hours (timezone safe).
         """
         cluster: Dict[str, JobPost] = {}
 
         for job in raw_jobs:
-            # 1. Strictly ignore if older than 24 hours (if date is present)
+            # 1. Strictly ignore if older than 24 hours (timezone safe)
             if job.posted_date:
-                cutoff = datetime.now() - timedelta(hours=24)
-                if job.posted_date < cutoff:
-                    continue
+                try:
+                    if job.posted_date.tzinfo is not None:
+                        from datetime import timezone
+                        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+                        if job.posted_date < cutoff:
+                            continue
+                    else:
+                        cutoff = datetime.now() - timedelta(hours=24)
+                        if job.posted_date < cutoff:
+                            continue
+                except Exception:
+                    pass
 
             # 2. Compute canonical fingerprint
             fp = job.generate_fingerprint()
@@ -88,7 +97,7 @@ class Deduplicator:
         Persists newly processed jobs into SQLite so subsequent runs skip them.
         """
         fp = job.fingerprint or job.generate_fingerprint()
-        with sqlite3.connect(self.db_path) as conn:
+        with sqlite3.connect(self.db_path, timeout=30.0) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT OR REPLACE INTO seen_jobs 

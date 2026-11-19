@@ -24,12 +24,12 @@ class ApplicationTracker:
 
     def _init_csv(self):
         if not os.path.exists(self.CSV_PATH):
-            with open(self.CSV_PATH, mode='w', newline='', encoding='utf-8') as f:
+            with open(self.CSV_PATH, mode='w', newline='', encoding='utf-8-sig') as f:
                 writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
                 writer.writeheader()
 
     def _init_db(self):
-        with sqlite3.connect(self.DB_PATH) as conn:
+        with sqlite3.connect(self.DB_PATH, timeout=30.0) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS application_funnel (
@@ -53,7 +53,7 @@ class ApplicationTracker:
         fp = job.fingerprint or job.generate_fingerprint()
 
         # 1. Update SQLite Funnel
-        with sqlite3.connect(self.DB_PATH) as conn:
+        with sqlite3.connect(self.DB_PATH, timeout=30.0) as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT OR IGNORE INTO application_funnel
@@ -79,6 +79,6 @@ class ApplicationTracker:
             "recruiter_search_url": recruiter_search_url,
             "status": "Ready to Apply"
         }
-        with open(self.CSV_PATH, mode='a', newline='', encoding='utf-8') as f:
+        with open(self.CSV_PATH, mode='a', newline='', encoding='utf-8-sig') as f:
             writer = csv.DictWriter(f, fieldnames=self.FIELDNAMES)
             writer.writerow(row)

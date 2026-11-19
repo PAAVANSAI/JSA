@@ -26,10 +26,10 @@ class CareerPagesCollector(BaseCollector):
         ]
 
     def _fetch_greenhouse(self, company_name: str, slug: str) -> List[JobPost]:
-        url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
+        url = f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content=true"
         posts = []
         try:
-            with httpx.Client(timeout=10.0) as client:
+            with httpx.Client(timeout=12.0) as client:
                 res = client.get(url)
                 if res.status_code != 200:
                     return []
@@ -38,6 +38,7 @@ class CareerPagesCollector(BaseCollector):
                     title = item.get("title", "")
                     job_id = item.get("id", "")
                     raw_apply_url = item.get("absolute_url", "")
+                    content_html = item.get("content", "")
                     
                     # Convert to modern human-friendly Greenhouse application URL
                     if "boards-api.greenhouse.io" in raw_apply_url or not raw_apply_url:
@@ -55,6 +56,7 @@ class CareerPagesCollector(BaseCollector):
                         apply_url=apply_url,
                         source_layer=1,
                         source_name=f"Career Page: Greenhouse ({company_name})",
+                        description=content_html,
                         raw_data=item
                     ))
         except Exception as e:
@@ -90,6 +92,35 @@ class CareerPagesCollector(BaseCollector):
             logger.warning(f"Error fetching Lever for {company_name}: {e}")
         return posts
 
+    def _fetch_smartrecruiters(self, company_name: str, slug: str) -> List[JobPost]:
+        url = f"https://api.smartrecruiters.com/v1/companies/{slug}/postings?limit=50"
+        posts = []
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                res = client.get(url)
+                if res.status_code != 200:
+                    return []
+                data = res.json()
+                for item in data.get("content", []):
+                    title = item.get("name", "")
+                    job_id = item.get("id", "")
+                    apply_url = f"https://jobs.smartrecruiters.com/{slug}/{job_id}"
+                    loc_data = item.get("location", {})
+                    city = loc_data.get("city", "Hyderabad")
+                    country = loc_data.get("country", "India")
+                    posts.append(JobPost(
+                        title=title,
+                        company=company_name,
+                        location=f"{city}, {country}",
+                        apply_url=apply_url,
+                        source_layer=1,
+                        source_name=f"Career Page: SmartRecruiters ({company_name})",
+                        raw_data=item
+                    ))
+        except Exception as e:
+            logger.warning(f"Error fetching SmartRecruiters for {company_name}: {e}")
+        return posts
+
     def collect(self, keywords: List[str], locations: List[str], limit: int = 50) -> List[JobPost]:
         results: List[JobPost] = []
         err_count = 0
@@ -109,6 +140,8 @@ class CareerPagesCollector(BaseCollector):
                     fetched = self._fetch_greenhouse(c_name, slug)
                 elif ats == "lever":
                     fetched = self._fetch_lever(c_name, slug)
+                elif ats == "smartrecruiters":
+                    fetched = self._fetch_smartrecruiters(c_name, slug)
                 
                 # Filter by keywords and locations
                 for job in fetched:

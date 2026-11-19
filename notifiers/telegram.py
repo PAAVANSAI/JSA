@@ -1,4 +1,5 @@
 import os
+import html
 import httpx
 import logging
 from datetime import datetime
@@ -14,6 +15,7 @@ class TelegramNotifier:
     2. Zero clutter: Strictly AWS & DevOps (No Azure/GCP bleed).
     3. 1-Tap Copy Cold Outreach message (code syntax) to DM recruiters.
     4. Direct PDF Resume document delivery to your Telegram chat.
+    5. HTML Entity Safe: escapes special characters to prevent Telegram API crashes.
     """
     def __init__(self, bot_token: str = None, chat_id: str = None):
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -81,21 +83,26 @@ class TelegramNotifier:
             job = item["job"]
             intel = item["intel"]
             pitch = item["pitch"]
-            source_badge = "🏢 Official Career ATS" if job.source_layer == 1 else f"🌐 {job.source_name}"
+            source_badge = "🏢 Official Career ATS" if job.source_layer == 1 else f"🌐 {html.escape(job.source_name)}"
+
+            safe_title = html.escape(job.title)
+            safe_company = html.escape(job.company)
+            safe_location = html.escape(job.location)
+            safe_dm = html.escape(pitch['linkedin_dm'])
 
             card = (
-                f"📌 <b>{idx}. {job.title}</b>\n\n"
-                f"🏢 <b>Company:</b> {job.company}  ({intel['rating']})\n"
-                f"📍 <b>Location:</b> {job.location}\n"
+                f"📌 <b>{idx}. {safe_title}</b>\n\n"
+                f"🏢 <b>{safe_company}</b>  ({intel['rating']})\n"
+                f"📍 <b>Location:</b> {safe_location}\n"
                 f"💰 <b>Est. Salary:</b> <b>{intel['salary']}</b>\n"
                 f"🎯 <b>Match Score:</b> <b>{job.match_score:.0f}%</b>\n"
                 f"📡 <b>Source:</b> {source_badge}\n\n"
                 f"🔗 <b>Application Link:</b>\n"
                 f"👉 <a href='{job.apply_url}'><b>Click Here to Apply Directly</b></a>\n\n"
                 f"🔍 <b>Hiring Manager Connect:</b>\n"
-                f"👉 <a href='{pitch['linkedin_search_url']}'><b>Find Recruiters at {job.company}</b></a>\n\n"
+                f"👉 <a href='{pitch['linkedin_search_url']}'><b>Find Recruiters at {safe_company}</b></a>\n\n"
                 f"💬 <b>1-Tap Copy Recruiter Pitch:</b>\n"
-                f"<code>{pitch['linkedin_dm']}</code>\n\n"
+                f"<code>{safe_dm}</code>\n\n"
                 f"──────────────────────────\n"
             )
             entries.append(card)
