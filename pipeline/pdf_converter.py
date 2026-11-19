@@ -1,16 +1,21 @@
 import os
 import json
 import re
+import time
+import logging
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from models.job import JobPost
 
+logger = logging.getLogger("JSA.PDFResumeBuilder")
+
 class PDFResumeBuilder:
     """
     Builds clean, single-page, ATS-optimized PDF resumes for Charugundla Paavansai.
     Generates genuine PDF files directly using ReportLab (compatible with Windows, Linux, Ubuntu).
+    Automatically purges resumes older than 2 days (48 hours) to maintain zero clutter.
     """
     def __init__(self, profile_path: str = "config/master_profile.json", output_dir: str = "generated_resumes"):
         self.profile_path = profile_path
@@ -24,7 +29,37 @@ class PDFResumeBuilder:
                 return json.load(f)
         return {}
 
+    def cleanup_old_resumes(self, max_age_days: int = 2) -> int:
+        """
+        Automatically deletes any generated PDF or HTML resumes older than max_age_days (2 days / 48 hours).
+        Keeps .gitkeep intact.
+        """
+        if not os.path.exists(self.output_dir):
+            return 0
+
+        now = time.time()
+        max_age_seconds = max_age_days * 86400  # 48 hours
+        deleted = 0
+
+        for filename in os.listdir(self.output_dir):
+            if filename == ".gitkeep":
+                continue
+            filepath = os.path.join(self.output_dir, filename)
+            if os.path.isfile(filepath):
+                try:
+                    file_age = now - os.path.getmtime(filepath)
+                    if file_age > max_age_seconds:
+                        os.remove(filepath)
+                        deleted += 1
+                        logger.info(f"Auto-deleted 2-day-old resume: {filename}")
+                except Exception as e:
+                    logger.debug(f"Could not remove old resume {filename}: {e}")
+
+        return deleted
+
     def generate_pdf(self, job: JobPost) -> str:
+        # Run auto-cleanup for files older than 2 days
+        self.cleanup_old_resumes(max_age_days=2)
         clean_company = re.sub(r'[^a-zA-Z0-9]', '_', job.company).lower()
         pdf_filename = f"Resume_Paavansai_{clean_company}.pdf"
         pdf_path = os.path.join(self.output_dir, pdf_filename)

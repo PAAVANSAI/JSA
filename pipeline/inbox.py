@@ -87,6 +87,11 @@ class UnifiedInboxManager:
 
         logger.info(f"Starting unified collection cycle with {len(self.collectors)} plugins...")
 
+        # 0. Maintenance: automatically delete generated resumes older than 2 days
+        pruned_resumes = self.pdf_builder.cleanup_old_resumes(max_age_days=2)
+        if pruned_resumes > 0:
+            logger.info(f"Auto-cleaned {pruned_resumes} resumes older than 2 days.")
+
         # 1. Harvest from all active layers
         for collector in self.collectors:
             try:

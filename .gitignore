@@ -14,6 +14,7 @@ env/
 *.db-journal
 *.log
 
-# Generated Resumes (Local temporary files)
+# Generated Resumes (Local temporary files - auto-cleaned after 2 days)
 generated_resumes/*.html
+generated_resumes/*.pdf
 !generated_resumes/.gitkeep
