@@ -63,23 +63,37 @@ def run():
         unique = inbox.deduplicator.deduplicate_batch(mock_posts)
         print(f"✨ Deduplication result: {len(mock_posts)} raw posts reduced to {len(unique)} unique postings.")
         
+        from pipeline.company_intelligence import CompanyIntelligence
+        from pipeline.cold_pitch_generator import ColdPitchGenerator
         qualified_batch = []
         for job in unique:
             inbox.scam_detector.evaluate(job)
             score = inbox.scorer.score_job(job)
             print(f"\n- [{job.company}] {job.title}")
             print(f"  Source: {job.source_name} (Best link: {job.apply_url})")
-            print(f"  Alternates: {job.alternate_links}")
             print(f"  Match Score: {score}/100")
             print(f"  Scam Score: {job.scam_score} (Reasons: {job.scam_reasons})")
             
             if score >= 60 and job.scam_score < 0.5:
-                resume = inbox.resume_gen.generate_tailored_resume(job)
-                print(f"  📄 Tailored resume generated at: {resume}")
-                qualified_batch.append(job)
+                intel = CompanyIntelligence.enrich_job(job)
+                pitch = ColdPitchGenerator.generate_pitch(job)
+                pdf_path = inbox.pdf_builder.generate_pdf(job)
+                inbox.tracker.log_application(job, intel['salary'], pitch['linkedin_search_url'])
+                print(f"  📄 Tailored PDF resume built: {pdf_path}")
+                print(f"  💰 Salary: {intel['salary']} | {intel['rating']}")
+                print(f"  💬 1-Tap Cold DM: {pitch['linkedin_dm'][:60]}...")
+                qualified_batch.append({
+                    "job": job,
+                    "intel": intel,
+                    "pitch": pitch,
+                    "pdf_path": pdf_path
+                })
 
         if qualified_batch:
             inbox.notifier.send_digest_alert(qualified_batch)
+            top_job = qualified_batch[0]
+            caption = f"📄 <b>Tailored Resume: {top_job['job'].company}</b>\nRole: {top_job['job'].title} ({top_job['job'].match_score:.0f}% match)"
+            inbox.notifier.send_pdf_document(top_job["pdf_path"], caption)
 
         print("\n✅ Mock pipeline verification completed successfully.")
         return

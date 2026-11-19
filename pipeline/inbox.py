@@ -14,6 +14,10 @@ from pipeline.deduplicator import Deduplicator
 from pipeline.scam_detector import ScamDetector
 from pipeline.scorer import MatchScorer
 from pipeline.resume_generator import ResumeGenerator
+from pipeline.pdf_converter import PDFResumeBuilder
+from pipeline.cold_pitch_generator import ColdPitchGenerator
+from pipeline.company_intelligence import CompanyIntelligence
+from pipeline.tracker import ApplicationTracker
 from pipeline.link_validator import LinkValidator
 from notifiers.telegram import TelegramNotifier
 from config.settings import settings
@@ -22,14 +26,14 @@ logger = logging.getLogger("JSA.Inbox")
 
 class UnifiedInboxManager:
     """
-    Central orchestration engine for Job Search Automation:
-    1. Triggers enabled collector plugins.
-    2. Gathers raw feeds into one unified inbox.
-    3. Runs deduplication ('best link wins', removes repeats).
-    4. Evaluates scam probability.
-    5. Calculates match score against master_profile.json.
-    6. Generates tailored ATS resume for qualified matches.
-    7. Dispatches alerts to Telegram and produces heartbeat metrics.
+    Central orchestration engine for Charugundla Paavansai's Job Search Automation.
+    Features:
+    1. Multi-layer scanning (Career ATS + LinkedIn, Naukri, Indeed, Glassdoor, Foundit).
+    2. Strict 24-hour filter & precision AWS/DevOps match scoring (>= 60%).
+    3. Company salary intelligence and ratings.
+    4. Auto-generated 1-tap copy cold pitches for LinkedIn & Email.
+    5. Automatic PDF resume builder & Telegram document delivery.
+    6. Persistent Excel/CSV Application Funnel Tracker.
     """
     def __init__(self):
         self.collectors: List[BaseCollector] = []
@@ -38,7 +42,9 @@ class UnifiedInboxManager:
         self.deduplicator = Deduplicator(db_path=settings.db_path)
         self.scam_detector = ScamDetector()
         self.scorer = MatchScorer(profile_path="config/master_profile.json")
-        self.resume_gen = ResumeGenerator(profile_path="config/master_profile.json")
+        self.html_resume_gen = ResumeGenerator(profile_path="config/master_profile.json")
+        self.pdf_builder = PDFResumeBuilder(profile_path="config/master_profile.json")
+        self.tracker = ApplicationTracker()
         self.notifier = TelegramNotifier()
 
     def _register_collectors(self):
@@ -46,7 +52,7 @@ class UnifiedInboxManager:
         if settings.layer1_enabled:
             self.collectors.append(CareerPagesCollector(target_companies=settings.layer1_companies))
         
-        # Layer 2: JobSpy (Free portals)
+        # Layer 2: JobSpy (Naukri, LinkedIn, Indeed, Glassdoor)
         if settings.layer2_enabled:
             self.collectors.append(JobSpyCollector(
                 sites=settings.jobspy_sites, 
@@ -73,7 +79,7 @@ class UnifiedInboxManager:
         self.collectors.append(CommunityAlertsCollector())
 
     def run_cycle(self, keywords: List[str] = None, locations: List[str] = None) -> Dict[str, Any]:
-        keywords = keywords or ["AWS", "Cloud", "DevOps", "Support"]
+        keywords = keywords or ["AWS", "DevOps"]
         locations = locations or ["Hyderabad", "Bengaluru", "Remote"]
 
         raw_inbox: List[JobPost] = []
@@ -97,45 +103,64 @@ class UnifiedInboxManager:
         unique_jobs = self.deduplicator.deduplicate_batch(raw_inbox)
         new_jobs_count = len(unique_jobs)
 
-        # 3. Pipeline: Scam check -> Scoring -> Resume Generation -> Telegram Alert
-        notified_jobs: List[JobPost] = []
+        # 3. Pipeline: Scam check -> Scoring -> Intelligence -> Tracker -> PDF -> Digest
+        enriched_qualified: List[dict] = []
         for job in unique_jobs:
             # Scam check
             self.scam_detector.evaluate(job)
-            
-            # Skip blatant scams
             if job.scam_score >= 0.8:
                 logger.warning(f"Skipping scam job: {job.title} at {job.company} ({job.scam_reasons})")
                 continue
 
-            # Candidate match scoring
+            # Candidate match scoring (>= 60%)
             score = self.scorer.score_job(job)
-
             if score >= settings.min_match_score:
-                # 4. Working Link Validation: verify URL is live before alerting
+                # Working Link Validation
                 if not LinkValidator.is_link_alive(job.apply_url):
-                    logger.warning(f"Skipping job with dead or expired link: {job.title} at {job.company} ({job.apply_url})")
+                    logger.warning(f"Skipping job with dead or expired link: {job.title} at {job.company}")
                     continue
 
-                # Tailored resume generation
-                resume_path = None
-                if settings.auto_generate_resume:
-                    resume_path = self.resume_gen.generate_tailored_resume(job)
+                # Intelligence & Salary enrichment
+                intel = CompanyIntelligence.enrich_job(job)
 
-                # Mark as notified in persistent DB and add to batch digest
+                # Cold Pitch Generator (LinkedIn DM & Email)
+                pitch = ColdPitchGenerator.generate_pitch(job)
+
+                # Generate tailored PDF resume
+                pdf_path = self.pdf_builder.generate_pdf(job)
+
+                # Record in live Application Funnel Tracker (CSV + SQLite)
+                self.tracker.log_application(job, intel['salary'], pitch['linkedin_search_url'])
+
+                # Mark as notified in persistent DB
                 self.deduplicator.mark_notified(job)
-                notified_jobs.append(job)
 
-        # 4. Dispatch ALL matching jobs in ONE unified digest message (No spam / multiple pings)
-        if notified_jobs:
-            self.notifier.send_digest_alert(notified_jobs)
+                enriched_qualified.append({
+                    "job": job,
+                    "intel": intel,
+                    "pitch": pitch,
+                    "pdf_path": pdf_path
+                })
 
-        # 5. Heartbeat logged locally (no Telegram ping)
+        # 4. Dispatch ALL matching jobs in ONE unified rich digest message
+        if enriched_qualified:
+            self.notifier.send_digest_alert(enriched_qualified)
+
+            # Send the tailored PDF document for the highest-scoring job in this cycle
+            top_job = max(enriched_qualified, key=lambda x: x["job"].match_score)
+            caption = (
+                f"📄 <b>Tailored Resume: {top_job['job'].company}</b>\n"
+                f"Role: {top_job['job'].title} ({top_job['job'].match_score:.0f}% match)\n"
+                f"<i>Ready to download & submit!</i>"
+            )
+            self.notifier.send_pdf_document(top_job["pdf_path"], caption)
+
+        # 5. Heartbeat logged locally
         self.notifier.send_daily_heartbeat(health_reports)
 
         return {
             "total_harvested": total_harvested,
             "unique_new_jobs": new_jobs_count,
-            "notified_jobs": len(notified_jobs),
+            "notified_jobs": len(enriched_qualified),
             "health_reports": health_reports
         }

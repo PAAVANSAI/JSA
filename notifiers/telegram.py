@@ -1,17 +1,17 @@
 import os
 import httpx
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 from models.job import JobPost, CollectorHealth
 
 logger = logging.getLogger("JSA.Telegram")
 
 class TelegramNotifier:
     """
-    Dispatches job alerts to Telegram.
-    - Bundles all new jobs into ONE single digest message per sweep.
-    - No separate notifications per job.
-    - Heartbeat debug messages disabled to prevent clutter.
+    Advanced Telegram Dispatcher for Charugundla Paavansai:
+    1. Single clean digest with Salary intel, Glassdoor ratings, and direct apply links.
+    2. 1-Tap Copy Cold Outreach message (code syntax) to DM recruiters.
+    3. Direct PDF Resume document delivery to your Telegram chat.
     """
     def __init__(self, bot_token: str = None, chat_id: str = None):
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -38,38 +38,63 @@ class TelegramNotifier:
             logger.error(f"Failed to send Telegram message: {e}")
             return False
 
-    def send_digest_alert(self, jobs: List[JobPost]) -> bool:
+    def send_pdf_document(self, pdf_path: str, caption: str) -> bool:
         """
-        Sends all qualified jobs in ONE unified digest message.
-        Prevents multiple phone notifications.
+        Sends the actual compiled .pdf resume file directly to Telegram chat.
         """
-        if not jobs:
+        if not self.bot_token or not self.chat_id or not os.path.exists(pdf_path):
+            return False
+
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendDocument"
+        try:
+            with open(pdf_path, "rb") as f:
+                files = {"document": (os.path.basename(pdf_path), f, "application/pdf")}
+                data = {"chat_id": self.chat_id, "caption": caption, "parse_mode": "HTML"}
+                with httpx.Client(timeout=30.0) as client:
+                    res = client.post(url, data=data, files=files)
+                    return res.status_code == 200
+        except Exception as e:
+            logger.warning(f"Could not send PDF to Telegram: {e}")
+            return False
+
+    def send_digest_alert(self, enriched_jobs: List[dict]) -> bool:
+        """
+        Sends the rich unified digest with cold pitches and salary intel.
+        """
+        if not enriched_jobs:
             return True
 
         header = (
-            f"🎯 <b>AWS & DevOps Job Digest ({len(jobs)} New Openings)</b>\n"
-            f"⏱ <i>Posted: Today / Last 24 Hours • Match: 60%+</i>\n"
-            f"━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎯 <b>AWS & DEVOPS RADAR — {len(enriched_jobs)} NEW OPENINGS</b>\n"
+            f"👤 <b>Candidate:</b> Charugundla Paavansai\n"
+            f"⏱ <i>Posted: Today / Last 24 Hours • Score: 60%+</i>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         )
 
         entries = []
-        for idx, job in enumerate(jobs, 1):
+        for idx, item in enumerate(enriched_jobs, 1):
+            job = item["job"]
+            intel = item["intel"]
+            pitch = item["pitch"]
             source_badge = "🏢 Official ATS" if job.source_layer == 1 else f"🌐 {job.source_name}"
+
             entry = (
                 f"<b>{idx}. {job.title}</b>\n"
-                f"🏢 <b>{job.company}</b> | 📍 {job.location}\n"
-                f"🎯 Match: <b>{job.match_score:.0f}%</b> | 📡 {source_badge}\n"
-                f"👉 <a href='{job.apply_url}'><b>Click Here to Apply</b></a>\n"
+                f"🏢 <b>{job.company}</b> ({intel['rating']})\n"
+                f"📍 {job.location} | 💰 Est: <b>{intel['salary']}</b>\n"
+                f"🎯 Match Score: <b>{job.match_score:.0f}%</b> | 📡 {source_badge}\n"
+                f"👉 <a href='{job.apply_url}'><b>[Click Here to Apply Directly]</b></a>\n"
+                f"🔍 <a href='{pitch['linkedin_search_url']}'><b>[Find Recruiters on LinkedIn]</b></a>\n"
+                f"💬 <b>1-Tap Copy Cold DM Pitch:</b>\n"
+                f"<code>{pitch['linkedin_dm']}</code>\n"
             )
             entries.append(entry)
 
-        # Telegram limit is 4096 characters per message.
-        # Pack entries into chunks so all fit in unified digest messages.
         current_msg = header
         for entry in entries:
             if len(current_msg) + len(entry) + 25 > 3900:
                 self._send_message(current_msg)
-                current_msg = "🎯 <b>Job Digest (Continued)</b>\n━━━━━━━━━━━━━━━━━━━\n\n" + entry
+                current_msg = "🎯 <b>Job Radar Digest (Continued)</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" + entry
             else:
                 current_msg += entry + "\n"
 
@@ -78,9 +103,6 @@ class TelegramNotifier:
         return True
 
     def send_daily_heartbeat(self, health_reports: List[CollectorHealth]) -> bool:
-        """
-        Muted: Only logs locally to console; does not ping the user's phone.
-        """
         for h in health_reports:
-            logger.info(f"Collector status: {h.source_name} (L{h.layer}): {h.jobs_found} found ({h.jobs_new} new) - {h.status}")
+            logger.info(f"Collector status: {h.source_name} (L{h.layer}): {h.jobs_found} found - {h.status}")
         return True
