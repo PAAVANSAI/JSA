@@ -10,14 +10,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("JSA.ContinuousRunner")
 
-# Search matrices rotating specifically for Paavansai's AWS & DevOps profile
+# Search matrices locked strictly to AWS & DevOps
 SEARCH_QUERIES = [
     {"keywords": ["AWS", "DevOps"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
     {"keywords": ["AWS", "Fresher"], "locations": ["Hyderabad", "Bengaluru", "India"]},
-    {"keywords": ["DevOps", "Engineer"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
-    {"keywords": ["Junior", "DevOps"], "locations": ["Hyderabad", "India"]},
-    {"keywords": ["Cloud", "Support", "AWS"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
-    {"keywords": ["Docker", "Jenkins", "AWS"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
+    {"keywords": ["AWS", "Cloud", "Engineer"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
+    {"keywords": ["Junior", "AWS", "DevOps"], "locations": ["Hyderabad", "India"]},
+    {"keywords": ["AWS", "Cloud", "Support"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
+    {"keywords": ["AWS", "Docker", "Jenkins"], "locations": ["Hyderabad", "Bengaluru", "Remote"]},
 ]
 
 DAY_INTERVAL_SECONDS = 300     # 5 Minutes (Daytime: 6:00 AM to 10:00 PM)

@@ -1,6 +1,7 @@
 import os
 import httpx
 import logging
+from datetime import datetime
 from typing import List, Dict, Optional
 from models.job import JobPost, CollectorHealth
 
@@ -8,10 +9,11 @@ logger = logging.getLogger("JSA.Telegram")
 
 class TelegramNotifier:
     """
-    Advanced Telegram Dispatcher for Charugundla Paavansai:
-    1. Single clean digest with Salary intel, Glassdoor ratings, and direct apply links.
-    2. 1-Tap Copy Cold Outreach message (code syntax) to DM recruiters.
-    3. Direct PDF Resume document delivery to your Telegram chat.
+    High-Aesthetic Telegram Dispatcher for Charugundla Paavansai:
+    1. Elegant visual spacing, bold highlights, and emoji badges.
+    2. Zero clutter: Strictly AWS & DevOps (No Azure/GCP bleed).
+    3. 1-Tap Copy Cold Outreach message (code syntax) to DM recruiters.
+    4. Direct PDF Resume document delivery to your Telegram chat.
     """
     def __init__(self, bot_token: str = None, chat_id: str = None):
         self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -40,7 +42,7 @@ class TelegramNotifier:
 
     def send_pdf_document(self, pdf_path: str, caption: str) -> bool:
         """
-        Sends the actual compiled .pdf resume file directly to Telegram chat.
+        Sends the compiled ATS .pdf resume file directly to Telegram chat.
         """
         if not self.bot_token or not self.chat_id or not os.path.exists(pdf_path):
             return False
@@ -59,15 +61,18 @@ class TelegramNotifier:
 
     def send_digest_alert(self, enriched_jobs: List[dict]) -> bool:
         """
-        Sends the rich unified digest with cold pitches and salary intel.
+        Sends the visually polished, well-spaced unified digest message.
         """
         if not enriched_jobs:
             return True
 
+        now_str = datetime.now().strftime("%d %b %Y • %I:%M %p")
         header = (
-            f"🎯 <b>AWS & DEVOPS RADAR — {len(enriched_jobs)} NEW OPENINGS</b>\n"
+            f"🚀 <b>AWS & DEVOPS RADAR — NEW OPENINGS</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>Candidate:</b> Charugundla Paavansai\n"
-            f"⏱ <i>Posted: Today / Last 24 Hours • Score: 60%+</i>\n"
+            f"⏱ <b>Posted:</b> Last 24 Hours • Score: 60%+\n"
+            f"📅 <b>Scanned:</b> {now_str}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         )
 
@@ -76,27 +81,35 @@ class TelegramNotifier:
             job = item["job"]
             intel = item["intel"]
             pitch = item["pitch"]
-            source_badge = "🏢 Official ATS" if job.source_layer == 1 else f"🌐 {job.source_name}"
+            source_badge = "🏢 Official Career ATS" if job.source_layer == 1 else f"🌐 {job.source_name}"
 
-            entry = (
-                f"<b>{idx}. {job.title}</b>\n"
-                f"🏢 <b>{job.company}</b> ({intel['rating']})\n"
-                f"📍 {job.location} | 💰 Est: <b>{intel['salary']}</b>\n"
-                f"🎯 Match Score: <b>{job.match_score:.0f}%</b> | 📡 {source_badge}\n"
-                f"👉 <a href='{job.apply_url}'><b>[Click Here to Apply Directly]</b></a>\n"
-                f"🔍 <a href='{pitch['linkedin_search_url']}'><b>[Find Recruiters on LinkedIn]</b></a>\n"
-                f"💬 <b>1-Tap Copy Cold DM Pitch:</b>\n"
-                f"<code>{pitch['linkedin_dm']}</code>\n"
+            card = (
+                f"📌 <b>{idx}. {job.title}</b>\n\n"
+                f"🏢 <b>Company:</b> {job.company}  ({intel['rating']})\n"
+                f"📍 <b>Location:</b> {job.location}\n"
+                f"💰 <b>Est. Salary:</b> <b>{intel['salary']}</b>\n"
+                f"🎯 <b>Match Score:</b> <b>{job.match_score:.0f}%</b>\n"
+                f"📡 <b>Source:</b> {source_badge}\n\n"
+                f"🔗 <b>Application Link:</b>\n"
+                f"👉 <a href='{job.apply_url}'><b>Click Here to Apply Directly</b></a>\n\n"
+                f"🔍 <b>Hiring Manager Connect:</b>\n"
+                f"👉 <a href='{pitch['linkedin_search_url']}'><b>Find Recruiters at {job.company}</b></a>\n\n"
+                f"💬 <b>1-Tap Copy Recruiter Pitch:</b>\n"
+                f"<code>{pitch['linkedin_dm']}</code>\n\n"
+                f"──────────────────────────\n"
             )
-            entries.append(entry)
+            entries.append(card)
 
         current_msg = header
-        for entry in entries:
-            if len(current_msg) + len(entry) + 25 > 3900:
+        for card in entries:
+            if len(current_msg) + len(card) + 30 > 3800:
                 self._send_message(current_msg)
-                current_msg = "🎯 <b>Job Radar Digest (Continued)</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" + entry
+                current_msg = (
+                    f"🚀 <b>AWS & DEVOPS RADAR (CONTINUED)</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" + card
+                )
             else:
-                current_msg += entry + "\n"
+                current_msg += card + "\n"
 
         if current_msg:
             return self._send_message(current_msg)

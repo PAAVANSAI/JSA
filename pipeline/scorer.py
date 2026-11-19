@@ -8,7 +8,8 @@ class MatchScorer:
     """
     Precision Match Scorer tailored for Charugundla Paavansai.
     Filters strictly for:
-    1. Core Relativity: AWS & DevOps roles (EC2, S3, Docker, Jenkins, Terraform, CI/CD, Linux, Python).
+    1. AWS MANDATORY: Rejects any role that does not focus on Amazon Web Services (AWS).
+       Strictly blocks Azure-only or GCP-only DevOps postings.
     2. Experience Gate: Fresher to 1-3 years experience (Strong penalty for 4+ years / Senior / Lead).
     3. Minimum Score Gate: 60%+ required for notification.
     """
@@ -16,6 +17,12 @@ class MatchScorer:
         "frontend", "react", "angular", "vue", "flutter", "ios", "android",
         "qa manual", "sales", "marketing", "accountant", "hr", "recruiter",
         "graphic designer", "ui/ux", "product manager", "scrum master"
+    ]
+
+    NON_AWS_CLOUD_TITLES = [
+        "azure devops", "azure cloud", "azure engineer", "azure administrator",
+        "azure infra", "gcp devops", "gcp engineer", "google cloud engineer",
+        "azure platform", "azure architect"
     ]
 
     SENIOR_INDICATORS = [
@@ -56,47 +63,60 @@ class MatchScorer:
                 job.match_score = 0.0
                 return 0.0
 
-        # 2. Negative Filter: Senior/Lead roles penalty
+        # 2. Strict Azure/GCP Negative Filter:
+        # If the job explicitly specifies Azure or GCP DevOps and does NOT mention AWS, reject!
+        for non_aws in self.NON_AWS_CLOUD_TITLES:
+            if non_aws in title_lower and "aws" not in title_lower:
+                job.match_score = 0.0
+                return 0.0
+
+        # 3. AWS Core Requirement:
+        # Paavansai's core competency is AWS.
+        # If "aws" and "amazon web services" are completely absent, drop immediately!
+        has_aws = bool(re.search(r'\baws\b', full_text) or "amazon web services" in full_text)
+        if not has_aws:
+            job.match_score = 15.0
+            return 15.0
+
+        # 4. Negative Filter: Senior/Lead roles penalty
         is_senior = any(re.search(r'\b' + re.escape(s) + r'\b', title_lower) for s in self.SENIOR_INDICATORS)
         has_high_exp = any(re.search(pat, full_text) for pat in self.HIGH_EXP_PATTERNS)
 
         if is_senior or has_high_exp:
-            # Heavily downrank senior roles so they do not meet the 60% threshold
             job.match_score = 25.0
             return 25.0
 
         total_score = 0.0
 
-        # 3. Core Role Relevance (Max 40 points)
-        # Must be AWS, DevOps, Cloud Support, or Cloud Infrastructure
-        if any(role in title_lower for role in ["aws devops", "aws engineer", "devops engineer", "cloud engineer"]):
+        # 5. Core Role Relevance (Max 40 points)
+        if any(role in title_lower for role in ["aws devops", "aws engineer", "aws cloud"]):
             total_score += 40.0
-        elif any(role in title_lower for role in ["aws", "devops", "cloud support", "infrastructure", "sre"]):
-            total_score += 32.0
+        elif "devops" in title_lower and has_aws:
+            total_score += 35.0
+        elif any(role in title_lower for role in ["cloud engineer", "cloud support", "infrastructure", "sre"]):
+            total_score += 30.0
         elif any(tool in title_lower for tool in ["docker", "jenkins", "terraform", "linux"]):
             total_score += 26.0
         else:
             total_score += 10.0
 
-        # 4. Tech Stack & Skills Alignment (Max 35 points)
+        # 6. Tech Stack & Skills Alignment (Max 35 points)
         core_skills = [
             "aws", "ec2", "s3", "iam", "vpc", "docker", "jenkins", "terraform",
             "kubernetes", "linux", "ci/cd", "cloudwatch", "lambda", "python", "git"
         ]
         matched_skills = [s for s in core_skills if re.search(r'\b' + re.escape(s) + r'\b', full_text)]
-        # 5 or more matching skills grants full 35 points
         skill_ratio = min(1.0, len(matched_skills) / 5.0)
         total_score += (skill_ratio * 35.0)
 
-        # 5. Experience Alignment (Max 15 points)
-        # Paavansai has 1 yr experience: rewards fresher up to 3 yrs
+        # 7. Experience Alignment (Max 15 points)
         has_fresher_indicator = any(re.search(pat, full_text) for pat in self.FRESHER_EXP_PATTERNS)
         if has_fresher_indicator:
             total_score += 15.0
         else:
-            total_score += 8.0  # Neutral experience mention
+            total_score += 8.0
 
-        # 6. Target Location Alignment (Max 10 points)
+        # 8. Target Location Alignment (Max 10 points)
         preferred_cities = ["hyderabad", "bengaluru", "bangalore", "remote", "pune", "chennai", "india"]
         if any(city in loc_lower for city in preferred_cities):
             total_score += 10.0
