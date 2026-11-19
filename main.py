@@ -79,6 +79,7 @@ def run():
                 pitch = ColdPitchGenerator.generate_pitch(job)
                 pdf_path = inbox.pdf_builder.generate_pdf(job)
                 inbox.tracker.log_application(job, intel['salary'], pitch['linkedin_search_url'])
+                inbox.deduplicator.mark_notified(job)
                 print(f"  📄 Tailored PDF resume built: {pdf_path}")
                 print(f"  💰 Salary: {intel['salary']} | {intel['rating']}")
                 print(f"  💬 1-Tap Cold DM: {pitch['linkedin_dm'][:60]}...")
