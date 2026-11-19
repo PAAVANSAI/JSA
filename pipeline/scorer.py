@@ -19,6 +19,8 @@ class MatchScorer:
         r"\btech lead\b", r"\bteam lead\b", r"\bhead of\b",
         r"\bii\b", r"\biii\b", r"\biv\b", r"\bv\b",  # Levels II, III, IV
         r"\b2\b", r"\b3\b", r"\b4\b",               # Levels 2, 3, 4 (e.g., DevOps Engineer 2)
+        r"\bl[2-9]\b", r"\bl-[2-9]\b",              # L2, L3, L4, L-3 (Level 2/3 Engineer)
+        r"\blevel\s*[2-9]\b", r"\blevel\s*(ii|iii|iv|v)\b",
         
         # Non-AWS Clouds
         r"\bazure\b", r"\bgcp\b", r"\bgoogle cloud\b",
@@ -30,11 +32,13 @@ class MatchScorer:
         r"\bproduct manager\b", r"\bscrum master\b"
     ]
 
-    # Reject if JD requires 3 or more years of experience
+    # Reject if JD or URL or metadata indicates 3 or more years of experience
     HIGH_EXP_PATTERNS = [
         r"\b(3\+|4\+|5\+|6\+|7\+|8\+|9\+|10\+|12\+|15\+)\s*(years|yrs|year|yr)\b",
         r"\b(3|4|5|6|7|8|9|10)\s*-\s*\d+\s*(years|yrs)\b",
         r"\b(3|4|5|6|7|8|9|10)\s*to\s*\d+\s*(years|yrs)\b",
+        r"(\b|[-_])(3|4|5|6|7|8|9|10|11|12|13|14|15)[-_]to[-_]\d+[-_](years|yrs)",
+        r"(\b|[-_])(3|4|5|6|7|8|9|10|12|15)\+(years|yrs)",
         r"\bminimum\s*(3|4|5|6|7|8|9|10)\s*(years|yrs)\b",
         r"\bat\s*least\s*(3|4|5|6|7|8|9|10)\s*(years|yrs)\b"
     ]
@@ -58,7 +62,9 @@ class MatchScorer:
         title_lower = job.title.lower()
         desc_lower = job.description.lower()
         loc_lower = job.location.lower()
-        full_text = f"{title_lower} {desc_lower}"
+        url_lower = job.apply_url.lower()
+        raw_str = str(job.raw_data).lower()
+        full_text = f"{title_lower} {desc_lower} {url_lower} {raw_str}"
 
         # 1. HARD REJECTION: Check title against senior, non-AWS, and unrelated blacklists
         for pattern in self.HARD_REJECT_TITLES:
