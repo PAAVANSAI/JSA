@@ -36,7 +36,17 @@ class CareerPagesCollector(BaseCollector):
                 data = res.json()
                 for item in data.get("jobs", []):
                     title = item.get("title", "")
-                    apply_url = item.get("absolute_url", "")
+                    job_id = item.get("id", "")
+                    raw_apply_url = item.get("absolute_url", "")
+                    
+                    # Convert to modern human-friendly Greenhouse application URL
+                    if "boards-api.greenhouse.io" in raw_apply_url or not raw_apply_url:
+                        apply_url = f"https://job-boards.greenhouse.io/{slug}/jobs/{job_id}"
+                    elif "boards.greenhouse.io" in raw_apply_url:
+                        apply_url = raw_apply_url.replace("boards.greenhouse.io", "job-boards.greenhouse.io")
+                    else:
+                        apply_url = raw_apply_url
+
                     location = item.get("location", {}).get("name", "India")
                     posts.append(JobPost(
                         title=title,
