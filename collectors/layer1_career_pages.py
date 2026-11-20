@@ -149,7 +149,8 @@ class CareerPagesCollector(BaseCollector):
                     loc_lower = job.location.lower()
                     
                     # Match any keyword in title or description
-                    kw_match = any(kw in title_lower for kw in kw_set) if kw_set else True
+                    desc_lower = job.description.lower() if job.description else ""
+                    kw_match = any(kw in title_lower or kw in desc_lower for kw in kw_set) if kw_set else True
                     # Match location
                     loc_match = any(l in loc_lower for l in loc_set) or "india" in loc_lower or "remote" in loc_lower if loc_set else True
 
