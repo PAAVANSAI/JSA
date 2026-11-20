@@ -13,6 +13,7 @@ def run():
     parser = argparse.ArgumentParser(description="Job Search Automation (JSA) Runner")
     parser.add_argument("--keywords", nargs="+", default=["AWS", "Cloud", "DevOps"], help="Search target keywords")
     parser.add_argument("--locations", nargs="+", default=["Hyderabad", "Bengaluru", "Remote"], help="Target cities")
+    parser.add_argument("--sweep-all", action="store_true", help="Run 5-query sweep across AWS, DevOps, Fresher, and Cloud Support")
     parser.add_argument("--test-mock", action="store_true", help="Inject sample jobs across multiple layers to verify deduplication and pipeline")
 
     args = parser.parse_args()
@@ -99,8 +100,12 @@ def run():
         print("\n✅ Mock pipeline verification completed successfully.")
         return
 
-    # Normal live cycle
-    summary = inbox.run_cycle(keywords=args.keywords, locations=args.locations)
+    # Execution cycle
+    if args.sweep_all:
+        print("🔍 Executing multi-query sweep across 5 AWS/DevOps entry-level search sets...")
+        summary = inbox.run_sweep()
+    else:
+        summary = inbox.run_cycle(keywords=args.keywords, locations=args.locations)
     print("\n" + "="*60)
     print("📊 PIPELINE CYCLE SUMMARY:")
     print(f"  Total raw jobs harvested: {summary['total_harvested']}")

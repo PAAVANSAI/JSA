@@ -1,13 +1,10 @@
-name: JSA Smart Radar (Day 5-Min / Night 8-Hr)
+name: JSA Smart Radar (24/7 Automated Job Hunter)
 
 on:
   schedule:
-    # Daytime (6:00 AM – 10:00 PM IST = 00:30 to 16:30 UTC): Every 5 minutes
-    - cron: '30,35,40,45,50,55 0 * * *'
-    - cron: '*/5 1-16 * * *'
-    # Nighttime (Runs once at night: 2:30 AM IST = 21:00 UTC)
-    - cron: '0 21 * * *'
-  workflow_dispatch: # Allows manual run anytime from GitHub button
+    # Runs automatically every 15 minutes 24/7 in GitHub Actions cloud
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions button
 
 jobs:
   scrape-and-notify:
@@ -39,7 +36,7 @@ jobs:
           MIN_MATCH_SCORE: '60.0'
           MAX_JOB_AGE_HOURS: '24'
         run: |
-          python main.py --keywords "AWS" "DevOps" --locations "Hyderabad" "Bengaluru" "Remote"
+          python main.py --sweep-all
 
       - name: Commit Updated Seen Database
         run: |

@@ -81,7 +81,24 @@ class UnifiedInboxManager:
     def run_cycle(self, keywords: List[str] = None, locations: List[str] = None) -> Dict[str, Any]:
         keywords = keywords or ["AWS", "DevOps"]
         locations = locations or ["Hyderabad", "Bengaluru", "Remote"]
+        return self._execute_harvest_pipeline([(keywords, locations)])
 
+    def run_sweep(self) -> Dict[str, Any]:
+        """
+        Comprehensive multi-query sweep targeting all relevant AWS & DevOps entry-level roles.
+        Harvests across 5 target query variants, aggregates unique jobs, and dispatches a single digest.
+        """
+        sweeps = [
+            (["AWS", "DevOps"], ["Hyderabad", "Bengaluru", "Remote"]),
+            (["AWS", "Fresher"], ["Hyderabad", "Bengaluru", "India"]),
+            (["Junior", "AWS", "DevOps"], ["Hyderabad", "Bengaluru", "India"]),
+            (["AWS", "Cloud", "Support"], ["Hyderabad", "Bengaluru", "Remote"]),
+            (["AWS", "Docker", "Jenkins"], ["Hyderabad", "Bengaluru", "India"]),
+        ]
+        logger.info(f"Initiating comprehensive 5-query sweep across India tech hubs...")
+        return self._execute_harvest_pipeline(sweeps)
+
+    def _execute_harvest_pipeline(self, query_plans: List[tuple]) -> Dict[str, Any]:
         raw_inbox: List[JobPost] = []
         health_reports: List[CollectorHealth] = []
 
@@ -92,21 +109,26 @@ class UnifiedInboxManager:
         if pruned_resumes > 0:
             logger.info(f"Auto-cleaned {pruned_resumes} resumes older than 2 days.")
 
-        # 1. Harvest from all active layers
+        # 1. Harvest across all query plans from all active layers
+        for (kw, loc) in query_plans:
+            logger.info(f"Scanning target: keywords={kw}, locations={loc}")
+            for collector in self.collectors:
+                try:
+                    posts = collector.collect(keywords=kw, locations=loc)
+                    raw_inbox.extend(posts)
+                except Exception as e:
+                    logger.error(f"Collector {collector.name} encountered an unhandled error: {e}")
+
         for collector in self.collectors:
-            try:
-                posts = collector.collect(keywords=keywords, locations=locations)
-                raw_inbox.extend(posts)
-                health_reports.append(collector.check_health())
-            except Exception as e:
-                logger.error(f"Collector {collector.name} encountered an unhandled error: {e}")
-                health_reports.append(collector.check_health())
+            health_reports.append(collector.check_health())
 
         total_harvested = len(raw_inbox)
+        logger.info(f"Total raw postings harvested across all queries: {total_harvested}")
 
         # 2. Deduplicate: remove duplicates across sources & select authoritative best link
         unique_jobs = self.deduplicator.deduplicate_batch(raw_inbox)
         new_jobs_count = len(unique_jobs)
+        logger.info(f"Unique unnotified postings after 4-gate deduplication: {new_jobs_count}")
 
         # 3. Pipeline: Scam check -> Scoring -> Intelligence -> Tracker -> PDF -> Digest
         enriched_qualified: List[dict] = []
