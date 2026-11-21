@@ -95,6 +95,7 @@ class TelegramNotifier:
                 f"<blockquote>"
                 f"🏢 <b>{safe_company}</b>  •  ⭐ <b>{intel['rating']}</b> ({intel['tier']})\n"
                 f"📍 <b>{safe_location}</b>  •  💰 <b>{intel['salary']}</b>\n"
+                f"🎓 <b>Experience:</b> 0–2 Years (Fresher / Junior Role)\n"
                 f"🎯 <b>Match Score: {job.match_score:.0f}%</b>  •  📡 <i>{source_badge}</i>"
                 f"</blockquote>\n\n"
                 f"🔗 <b><a href='{job.apply_url}'>APPLY DIRECTLY (Official Board) ↗</a></b>\n"

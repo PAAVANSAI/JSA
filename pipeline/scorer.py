@@ -26,11 +26,16 @@ class MatchScorer:
         r"\b2\b", r"\b3\b", r"\b4\b",               # Levels 2, 3, 4 (e.g., DevOps Engineer 2)
         r"\bl[2-9]\b", r"\bl-[2-9]\b",              # L2, L3, L4, L-3 (Level 2/3 Engineer)
         r"\blevel\s*[2-9]\b", r"\blevel\s*(ii|iii|iv|v)\b",
+        r"\bspecialist\b", r"\bspclst\b",           # Specialist roles (e.g., Spclst Infrastructure)
+        r"\bconsultant\b",                          # Consultant roles
+        r"\badvisor\b",                             # Advisory roles
+        r"\bexpert\b",                              # Subject Matter Experts
         
         # Non-AWS Clouds
         r"\bazure\b", r"\bgcp\b", r"\bgoogle cloud\b",
         
         # Unrelated domains
+        r"\bmachine learning\b", r"\bml engineer\b", r"\bprompt engineer\b", r"\bai engineer\b", r"\bdata platform\b",
         r"\bfrontend\b", r"\breact\b", r"\bangular\b", r"\bvue\b", r"\bflutter\b",
         r"\bios\b", r"\bandroid\b", r"\bqa manual\b", r"\bsales\b", r"\bmarketing\b",
         r"\baccountant\b", r"\bhr\b", r"\brecruiter\b", r"\bgraphic\b", r"\bui/ux\b",
@@ -39,7 +44,7 @@ class MatchScorer:
 
     # Reject if JD describes a senior or leadership responsibility
     DESC_SENIOR_PATTERNS = [
-        r"(?:seeking|looking for|hiring|role:?|as a|position:?)\s*(?:a|an)?\s*(?:senior|sr|lead|principal|architect|staff)",
+        r"(?:seeking|looking for|hiring|role\s*:?|as a|position\s*:?)\s*(?:a|an)?\s*(?:senior|sr|lead|principal|architect|staff|specialist|advisor|consultant)",
         r"(?:lead|manage|head|guide)\s+(?:the|our)\s+(?:team|devops|cloud|infrastructure|engineers)",
         r"\b(?:senior|sr|lead|principal)\s+(?:devops|cloud|infrastructure|systems|aws)\s+engineer\b",
         r"\b(?:senior|lead)\s+architect\b",
@@ -63,15 +68,19 @@ class MatchScorer:
         return {}
 
     @staticmethod
-    def clean_text(raw_html: str) -> str:
-        """Strip HTML tags and unescape HTML entities for clean NLP evaluation."""
-        text = re.sub(r"<[^>]+>", " ", raw_html or "")
+    def clean_text(raw_text: str) -> str:
+        """Strip HTML tags, unescape entities, and remove markdown symbols that bind words/numbers."""
+        text = re.sub(r"<[^>]+>", " ", raw_text or "")
         text = html.unescape(text)
+        # Strip markdown formatting (*, _, #, ~, `, |) so e.g. **Experience:8-12** becomes clean text
+        text = re.sub(r"[*_#`~|]", " ", text)
+        # Put spaces around colons so e.g. Experience:8-12 becomes Experience : 8-12
+        text = re.sub(r":", " : ", text)
         return " ".join(text.split())
 
     def evaluate_experience(self, job: JobPost) -> Tuple[bool, str, float]:
         """
-        Deep analysis of Job Description, metadata, and URL to determine exact experience requirement.
+        Deep analysis of Job Description, metadata, salary, and URL to determine exact experience requirement.
         Returns: (is_qualified, rejection_reason, experience_bonus_score)
         """
         clean_desc = self.clean_text(job.description).lower()
@@ -79,8 +88,18 @@ class MatchScorer:
         url_lower = job.apply_url.lower()
         full_text = f"{title_lower} {clean_desc} {url_lower}"
 
-        # 1. Check metadata for senior levels or high experience
+        # 1. Check salary metadata: Fresher AWS roles in India never have base > 11 LPA
         if job.raw_data and isinstance(job.raw_data, dict):
+            min_amt = job.raw_data.get("min_amount")
+            interval = str(job.raw_data.get("interval", "")).lower()
+            if min_amt and interval == "yearly":
+                try:
+                    if float(min_amt) >= 1100000.0:
+                        if not any(f in title_lower for f in ["fresher", "trainee", "intern", "graduate"]):
+                            return False, f"Salary min ₹{float(min_amt):,.0f} indicates senior/lead role (>= 11 LPA)", 0.0
+                except (ValueError, TypeError):
+                    pass
+
             job_level = str(job.raw_data.get("job_level", "")).lower()
             if any(lvl in job_level for lvl in ["mid-senior", "director", "executive", "senior"]):
                 return False, f"Job level metadata is '{job_level}'", 0.0
@@ -99,30 +118,39 @@ class MatchScorer:
             if re.search(pat, clean_desc):
                 return False, f"Description specifies senior/lead scope ({pat})", 0.0
 
-        # 3. Check for high experience ranges in description or URL (e.g., '3-5 years', '4 to 8 yrs')
-        # Also check URL slug patterns (e.g. '8-to-13-years')
-        range_matches = re.findall(r"(\d+(?:\.\d+)?)\s*(?:-|to|–)\s*(\d+(?:\.\d+)?)\s*(?:years|yrs|year|yr|yoe)\b", full_text)
+        # 3. Check for high experience ranges in description, metadata, or URL (e.g. '8-12 Years', '4-to-6-years')
+        range_matches = re.findall(r"(\d+(?:\.\d+)?)[-_\s]*(?:-|to|–)[-_\s]*(\d+(?:\.\d+)?)[-_\s]*(?:years|yrs|year|yr|yoe)\b", full_text, re.IGNORECASE)
         for lower_str, upper_str in range_matches:
             try:
                 low, high = float(lower_str), float(upper_str)
-                # If minimum required is 3+, or range is mid-level like 2-5 or 3-6
+                # If minimum required is 3+, or range is mid-level like 2-5, 3-6, 8-12
                 if low >= 3.0 or high >= 4.0:
                     return False, f"Description requires {low}-{high} years of experience", 0.0
             except ValueError:
                 continue
 
         # 4. Check for 'X+ years' requirements (e.g., '3+ years', '5+ years')
-        plus_matches = re.findall(r"(\d+(?:\.\d+)?)\s*\+\s*(?:years|yrs|year|yr|yoe)\b", full_text)
+        plus_matches = re.findall(r"(\d+(?:\.\d+)?)\s*\+\s*(?:years|yrs|year|yr|yoe)?\b", full_text, re.IGNORECASE)
         for match in plus_matches:
             try:
                 val = float(match)
-                if val >= 3.0:
+                if val >= 2.5:
                     return False, f"Description specifies {val}+ years experience requirement", 0.0
             except ValueError:
                 continue
 
-        # 5. Check for 'minimum X years' / 'at least X years'
-        min_matches = re.findall(r"(?:minimum|min|at least|requires?)\s*(\d+(?:\.\d+)?)\s*(?:years|yrs|year|yr|yoe)\b", full_text)
+        # 5. Check for explicit prefix 'Experience : X years' (e.g. 'Experience: 8 Years')
+        prefix_matches = re.findall(r"(?:experience|exp|work\s+exp|relevant\s+exp)\s*:\s*(\d+(?:\.\d+)?)\s*(?:years|yrs|year|yr|yoe)?\b", clean_desc, re.IGNORECASE)
+        for match in prefix_matches:
+            try:
+                val = float(match)
+                if val >= 3.0:
+                    return False, f"Description specifies Experience: {val} years", 0.0
+            except ValueError:
+                continue
+
+        # 6. Check for 'minimum X years' / 'at least X years' / 'must have X years'
+        min_matches = re.findall(r"(?:minimum|min|at\s*least|must\s*have|requires?)\s*(\d+(?:\.\d+)?)\s*(?:years|yrs|year|yr|yoe)\b", full_text, re.IGNORECASE)
         for match in min_matches:
             try:
                 val = float(match)
@@ -131,7 +159,7 @@ class MatchScorer:
             except ValueError:
                 continue
 
-        # 6. Experience match score determination
+        # 7. Experience match score determination
         has_fresher_indicator = any(re.search(pat, full_text) for pat in self.FRESHER_EXP_PATTERNS)
         if has_fresher_indicator:
             # Full experience bonus for explicit fresher / junior / 0-2 years
@@ -154,7 +182,7 @@ class MatchScorer:
                 job.match_score = 0.0
                 return 0.0
 
-        # 2. DEEP EXPERIENCE EVALUATION (Description + Metadata + URL)
+        # 2. DEEP EXPERIENCE EVALUATION (Description + Metadata + Salary + URL)
         is_exp_ok, exp_reason, exp_bonus = self.evaluate_experience(job)
         if not is_exp_ok:
             logger.info(f"Rejected [{job.company}] {job.title}: {exp_reason}")
@@ -171,16 +199,23 @@ class MatchScorer:
         total_score = 0.0
 
         # 4. Core Role Relevance (Max 40 points)
+        # Strictly require a Cloud/DevOps/Infrastructure/AWS role. Unrelated roles get 0.0!
         if any(role in title_lower for role in ["aws devops", "aws engineer", "aws cloud"]):
             total_score += 40.0
         elif "devops" in title_lower and has_aws:
             total_score += 35.0
-        elif any(role in title_lower for role in ["cloud engineer", "cloud support", "infrastructure", "sre"]):
+        elif any(role in title_lower for role in ["cloud engineer", "cloud support", "infrastructure", "sre", "platform engineer", "systems engineer", "site reliability"]):
             total_score += 30.0
         elif any(tool in title_lower for tool in ["docker", "jenkins", "terraform", "linux"]):
             total_score += 26.0
         else:
-            total_score += 15.0
+            # Unrelated title (e.g. Generic Software Engineer, Prompt Engineer, etc.)
+            total_score += 0.0
+
+        # If title relevance is 0, the job is not a DevOps/Cloud role!
+        if total_score == 0.0:
+            job.match_score = 0.0
+            return 0.0
 
         # 5. Tech Stack & Skills Alignment (Max 35 points)
         core_skills = [
